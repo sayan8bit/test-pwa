@@ -11,41 +11,222 @@
   <!-- Theme Color -->
   <meta name="theme-color" content="#0d6efd">
 
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      margin: 0;
-      background: #f9f9f9;
-      color: #333;
-    }
-    h1 {
-      color: #0d6efd;
-    }
-    button {
-      background: #0d6efd;
-      color: white;
-      border: none;
-      padding: 12px 24px;
-      font-size: 16px;
-      border-radius: 8px;
-      cursor: pointer;
-      margin-top: 20px;
-    }
-    button:hover {
-      background: #0b5ed7;
-    }
-  </style>
+<style>
+body { display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; background:#111; color:#fff; font-family:sans-serif; margin:0; }
+#mic { width:120px; height:120px; border-radius:50%; background:red; margin:20px; transition: transform 0.1s; }
+button { padding:14px 24px; font-size:18px; border:none; border-radius:10px; cursor:pointer; background:#0ff; color:#000; font-weight:bold; margin:5px; }
+</style>
 </head>
 <body>
-  <h1>🚀 My PWA App</h1>
-  <p>This is a Progressive Web App.</p>
-  <button id="installBtn" hidden>Install App</button>
 
+<h1>🎤 Jarvis PWA</h1>
+<div id="mic"></div>
+<button id="toggle">Start Listening</button>
+
+<script>
+const mic = document.getElementById("mic");
+const btn = document.getElementById("toggle");
+const synth = window.speechSynthesis;
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+let recognition = null;
+let listening = false;
+
+// Memory
+let memory = {};
+
+// Jokes & Quotes
+const jokes = ["Why did the computer go to the doctor? It caught a virus!", "I would tell you a joke about UDP, but you might not get it."];
+const quotes = ["The best way to predict the future is to invent it.", "Stay hungry, stay foolish."];
+
+// Speak
+function speak(text){
+    const utter = new SpeechSynthesisUtterance(text);
+    synth.speak(utter);
+}
+
+// Wikipedia search
+async function wikiSearch(query){
+    try {
+        const searchUrl = `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query)}&utf8=&format=json&origin=*`;
+        const searchRes = await fetch(searchUrl);
+        const searchData = await searchRes.json();
+        if(!searchData.query.search.length) {
+            speak("Sorry, I could not find information on that topic.");
+            return;
+        }
+        const title = searchData.query.search[0].title;
+        const summaryUrl = `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`;
+        const summaryRes = await fetch(summaryUrl);
+        const summaryData = await summaryRes.json();
+        if(summaryData.extract) speak(summaryData.extract);
+        else speak("Sorry, I could not get a summary.");
+    } catch (e) {
+        speak("Sorry, there was an error fetching Wikipedia.");
+    }
+}
+
+// Handle commands
+async function handleCommand(command){
+    command = command.toLowerCase();
+    console.log("Heard:", command);
+
+    switch(true){
+        // Greetings
+        case /hello|hi/.test(command):
+            speak("Hello! How can I assist you?");
+            break;
+        case /your name/.test(command):
+            speak("My name is Jarvis, your PWA assistant.");
+            break;
+        case /how are you/.test(command):
+            speak("I am just code, but I am functioning perfectly.");
+            break;
+
+        // Time & Date
+        case /time/.test(command):
+            speak("The time is " + new Date().toLocaleTimeString());
+            break;
+        case /date/.test(command):
+            speak("Today is " + new Date().toDateString());
+            break;
+
+        // Websites
+        case /open youtube/.test(command):
+            speak("Opening YouTube"); window.open("https://youtube.com","_blank");
+            break;
+        case /open google/.test(command):
+            speak("Opening Google"); window.open("https://google.com","_blank");
+            break;
+        case /open facebook/.test(command):
+            speak("Opening Facebook"); window.open("https://facebook.com","_blank");
+            break;
+        case /search for/.test(command):
+            let query = command.replace("search for","").trim();
+            speak("Searching for " + query); 
+            window.open("https://www.google.com/search?q="+encodeURIComponent(query), "_blank"); 
+            break;
+
+        // Music (redirect to YouTube search)
+        case /play (.+)/.test(command):
+            let song = command.match(/play (.+)/)[1];
+            speak("Playing " + song + " on YouTube");
+            window.open("https://www.youtube.com/results?search_query="+encodeURIComponent(song), "_blank");
+            break;
+
+        // Memory
+        case /^remember that/.test(command):
+            let text = command.replace("remember that","").trim();
+            memory[text] = true;
+            speak("Okay, I will remember that.");
+            break;
+        case /^do you remember/.test(command):
+            let recall = command.replace("do you remember","").trim();
+            if(memory[recall]) speak("Yes, I remember " + recall);
+            else speak("No, I do not remember that.");
+            break;
+
+        // Math
+        case /calculate|what is/.test(command):
+            try{
+                let expr = command.replace(/calculate|what is/gi,"").trim();
+                let result = eval(expr);
+                speak("The answer is " + result);
+            } catch {
+                speak("Sorry, I cannot calculate that.");
+            }
+            break;
+
+        // Jokes & Quotes
+        case /joke/.test(command):
+            speak(jokes[Math.floor(Math.random()*jokes.length)]);
+            break;
+        case /quote/.test(command):
+            speak(quotes[Math.floor(Math.random()*quotes.length)]);
+            break;
+
+        // Timer
+        case /set timer for/.test(command):
+            let num = command.match(/\d+/);
+            if(num){
+                let seconds = parseInt(num[0])*60;
+                speak(`Setting a timer for ${num[0]} minutes`);
+                setTimeout(()=>{ speak("Timer finished!") }, seconds*1000);
+            }
+            break;
+
+        // Weather
+        case /weather in/.test(command):
+            let city = command.replace("weather in","").trim();
+            fetch(`https://wttr.in/${city}?format=3`).then(r=>r.text()).then(data=>{
+                speak(data);
+            }).catch(()=>speak("Sorry, cannot get weather."));
+            break;
+
+        // Wikipedia
+        case /who is|what is|tell me about/.test(command):
+            let topic = command.replace(/who is|what is|tell me about/gi,"").trim();
+            if(topic) await wikiSearch(topic);
+            else speak("Please tell me the topic.");
+            break;
+
+        // Exit
+        case /stop|exit|quit/.test(command):
+            speak("Goodbye!"); stopListening();
+            break;
+
+        default:
+            speak("Sorry, I don't know how to do that yet.");
+            break;
+    }
+}
+
+// Start/Stop Listening
+function startListening(){
+    listening = true;
+    recognition.start();
+    btn.textContent = 'Stop Listening';
+    mic.style.background = 'limegreen';
+    speak('Jarvis online');
+    animateMic();
+}
+
+function stopListening(){
+    listening = false;
+    recognition.stop();
+    btn.textContent = 'Start Listening';
+    mic.style.background = 'red';
+    speak('Jarvis offline');
+}
+
+// Mic animation
+function animateMic(){
+    if(!listening) return;
+    mic.style.transform = 'scale('+(1 + Math.random()*0.5)+')';
+    requestAnimationFrame(animateMic);
+}
+
+// Initialize recognition
+if(SpeechRecognition){
+    recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = false;
+    recognition.lang = 'en-US';
+    recognition.onresult = e => {
+        const transcript = e.results[e.results.length-1][0].transcript.trim();
+        handleCommand(transcript);
+    }
+    recognition.onend = () => {
+        if(listening) recognition.start();
+        mic.style.transform = 'scale(1)';
+    }
+} else alert('Your browser does not support SpeechRecognition. Use Chrome or Edge.');
+
+// Button toggle
+btn.onclick = () => {
+    if(!listening) startListening();
+    else stopListening();
+}
+</script>
   <script>
     // Register Service Worker
     if ("serviceWorker" in navigator) {
@@ -76,3 +257,4 @@
   </script>
 </body>
 </html>
+
