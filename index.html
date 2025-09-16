@@ -1,59 +1,78 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>My PWA App</title>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My PWA</title>
 
-    <!-- Manifest -->
-    <link rel="manifest" href="manifest.json" />
-    <meta name="theme-color" content="#0d6efd" />
+  <!-- Manifest -->
+  <link rel="manifest" href="./manifest.json">
 
-    <!-- Icons -->
-    <link rel="icon" href="icon-192.png" type="image/png" />
-    <link rel="apple-touch-icon" href="icon-512.png" />
+  <!-- Theme Color -->
+  <meta name="theme-color" content="#0d6efd">
 
-    <style>
-      body {
-        font-family: Arial, sans-serif;
-        text-align: center;
-        margin: 50px;
-        background: #f4f4f4;
-      }
-      h1 {
-        color: #0d6efd;
-      }
-      button {
-        padding: 12px 20px;
-        font-size: 18px;
-        cursor: pointer;
-        border: none;
-        background: #0d6efd;
-        color: white;
-        border-radius: 8px;
-      }
-      button:hover {
-        background: #0b5ed7;
-      }
-    </style>
-  </head>
-  <body>
-    <h1>Hello 🌍</h1>
-    <p>This is an installable PWA hosted on GitHub Pages.</p>
-    <button onclick="sayHello()">Click Me</button>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      background: #f9f9f9;
+      color: #333;
+    }
+    h1 {
+      color: #0d6efd;
+    }
+    button {
+      background: #0d6efd;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      font-size: 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      margin-top: 20px;
+    }
+    button:hover {
+      background: #0b5ed7;
+    }
+  </style>
+</head>
+<body>
+  <h1>🚀 My PWA App</h1>
+  <p>This is a Progressive Web App.</p>
+  <button id="installBtn" hidden>Install App</button>
 
-    <script>
-      function sayHello() {
-        alert("Welcome to my PWA 🚀");
-      }
+  <script>
+    // Register Service Worker
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("./service-worker.js");
+    }
 
-      // Register Service Worker
-      if ("serviceWorker" in navigator) {
-        navigator.serviceWorker
-          .register("./service-worker.js")
-          .then(() => console.log("Service Worker registered"))
-          .catch((err) => console.log("SW registration failed:", err));
+    // Handle Install Prompt
+    let deferredPrompt;
+    const installBtn = document.getElementById("installBtn");
+
+    window.addEventListener("beforeinstallprompt", (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      installBtn.hidden = false;
+    });
+
+    installBtn.addEventListener("click", async () => {
+      installBtn.hidden = true;
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        if (outcome === "accepted") {
+          console.log("App installed");
+        }
+        deferredPrompt = null;
       }
-    </script>
-  </body>
+    });
+  </script>
+</body>
 </html>
